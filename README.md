@@ -2,22 +2,22 @@
 ## Group:
 * Zihang WANG
 * Liyang FANG
-* Sanjaya deshapriya gunawardena Heeralu aarachchige don
 
 ## DataSet Info:
 ### Info
-National Grid ESO is the electricity system operator for Great Britain. They have gathered information of the electricity demand in Great Britain from 2009. The is updated twice an hour, which means 48 entries per day. This makes this dataset ideal for time series forecasting.
+With the rapid development of the Internet, especially the mobile Internet, web services have penetrated into all areas of society. People use the Internet to search, shop, pay, entertain, etc. Therefore, ensuring the stability of web services has become increasingly important.
+The stability of web services is mainly guaranteed by operation and maintenance. Operation and maintenance personnel judge whether the web service is stable by monitoring various key performance indicators (KPIs), because if a KPI is abnormal, it often means that the application related to it has failed. question.
 
-The [dataset](https://www.kaggle.com/datasets/albertovidalrod/electricity-consumption-uk-20092022) can be downloaded from Kaggle, we choose the historic_demand_2009_2024_noNaN.csv for the next analysis.
+The [data](https://competition.aiops-challenge.com/home/competition/1484452272200032281#1501482986716332093index=0) is from AIOps competation and it can be downloaded from [here](https://github.com/NetManAIOps/KPI-Anomaly-Detection/tree/master/Preliminary_dataset).
 
 ### Feature
-The main features we will use: 
+The features are: 
 
-* SETTLEMET_DATA: date in format dd/mm/yyyy
-* SETTLEMENT_PERIOD: half hourly period for the historic outtunr occurred
-* TSD (Transmission System Demand): Transmission System Demand is equal to the ND plus the additional generation required to meet station load, pump storage pumping and interconnector exports. Measured in MW.
-
+* KPI ID
+* timestamp
+* value 
+* tag
+  
 ### Quick look:
-* The dataset has high seasonality
-* Using a simple statistics tool-- Z score, it shows several anomalies.
+* The dataset is complicated containing 26 different kinds of time series data.
 * For more details, please checkt the notebook.   
