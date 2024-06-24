@@ -1,4 +1,4 @@
-# TSA_UK_Electricity
+# KPI_Anomaly_Detection
 ## Group:
 * Zihang WANG
 * Liyang FANG
