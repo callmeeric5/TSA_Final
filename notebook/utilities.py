@@ -2,13 +2,24 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import datetime
+import torch
+from torch.utils.data import Dataset, DataLoader
+import numpy as np
+from sklearn.preprocessing import StandardScaler
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from sklearn.metrics import (
+    f1_score,
+    confusion_matrix,
+    classification_report,
+    accuracy_score,
+    recall_score,
+    precision_score,
+)
 
 
-def plot_anomaly(df):
+def plot_anomaly_labeled(df):
     plt.figure(figsize=(20, 10))
     sns.lineplot(data=df, x="datetime", y="value")
     sns.scatterplot(
@@ -26,6 +37,37 @@ def plot_anomaly(df):
     plt.ylabel("Values for KPI ID")
     plt.xlabel("Datetime")
     plt.xticks(rotation=30, horizontalalignment="right")
+    plt.show()
+
+
+def plot_anomaly_detected(df, anomalies):
+    plt.figure(figsize=(20, 10))
+    sns.lineplot(data=df, x="datetime", y="value")
+    sns.scatterplot(
+        data=df[df.label == 1],
+        x="datetime",
+        y="value",
+        color="g",
+        s=50,
+        alpha=0.7,
+        label="anomaly (label=1)",
+    )
+    sns.scatterplot(
+        data=anomalies.value,
+        x=anomalies["datetime"],
+        y=anomalies["value"],
+        color="r",
+        s=100,
+        alpha=0.7,
+        label="anomaly (detected)",
+        marker="X",
+    )
+    plt.title(f"Anomalies for KPI ID {df.kpi_id.iloc[0]}")
+    plt.xlabel("Datetime")
+    plt.ylabel("Value")
+    plt.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     plt.show()
 
 
@@ -66,29 +108,30 @@ def test_stationarity(df):
         print(f"KPI ID {df.kpi_id.iloc[0]} is NOT stationary")
 
 
-def season_decompose(df):
+def season_decompose(df, isplot=True):
+    df["value"] = df["value"].interpolate()
     decomposition = seasonal_decompose(df["value"], model="additive", period=1440)
 
     trend = decomposition.trend
     seasonal = decomposition.seasonal
     residual = decomposition.resid
+    if isplot:
+        fig, axes = plt.subplots(4, 1, figsize=(14, 10), sharex=True)
 
-    fig, axes = plt.subplots(4, 1, figsize=(14, 10), sharex=True)
+        df["value"].plot(ax=axes[0], color="blue", label="Original")
+        axes[0].set_title(f"KPI ID {df.kpi_id.iloc[0]}")
 
-    df["value"].plot(ax=axes[0], color="blue", label="Original")
-    axes[0].set_title(f"KPI ID {df.kpi_id.iloc[0]}")
+        trend.plot(ax=axes[1], color="red", label="Trend")
+        axes[1].set_title("Trend")
 
-    trend.plot(ax=axes[1], color="red", label="Trend")
-    axes[1].set_title("Trend")
+        seasonal.plot(ax=axes[2], color="green", label="Seasonality")
+        axes[2].set_title("Seasonality")
 
-    seasonal.plot(ax=axes[2], color="green", label="Seasonality")
-    axes[2].set_title("Seasonality")
+        residual.plot(ax=axes[3], color="purple", label="Residuals")
+        axes[3].set_title("Residuals")
 
-    residual.plot(ax=axes[3], color="purple", label="Residuals")
-    axes[3].set_title("Residuals")
-
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()
 
     return trend, seasonal, residual
 
@@ -103,3 +146,71 @@ def plot_acf_pacf(df):
     ax2.set_title(f"PACF for KPI ID {df.kpi_id.iloc[0]}")
 
     plt.show()
+
+
+def evaluation(y_true, y_pred, kpi_id, method):
+    # Confusion matrix
+    print("Confusion matrix:")
+    cm = confusion_matrix(y_true, y_pred)
+    TP = cm[0][0]
+    FP = cm[0][1]
+    FN = cm[1][0]
+    TN = cm[1][1]
+    print(f"True Positive: {TP}")
+    print(f"False Positive: {FP}")
+    print(f"False Negative: {FN}")
+    print(f"True Negative: {TN}")
+
+    # False positive rate
+    FPR = round(FP / (FP + TN) * 100, 2)
+    print(f"False Positive Rate: {FPR}%")
+
+    # False negative rate
+    FNR = round(FN / (TP + FN) * 100, 2) if FN > 0 else 0
+
+    print(f"False Negative Rate: {FNR}%")
+
+    # Accuracy
+    ACC = round((TP + TN) / (TP + FP + FN + TN) * 100, 2)
+    print("Accuracy: {:.2f}%".format(ACC))
+    F1 = round(f1_score(y_true, y_pred) * 100, 2)
+    print("F1 Score: {:.2f}%".format(F1))
+    Recall = round(recall_score(y_true, y_pred) * 100, 2)
+    print("Recall: {:.2f}%".format(Recall))
+    Precision = round(precision_score(y_true, y_pred) * 100, 2)
+    print("Precision: {:.2f}%".format(Precision))
+
+    columns = [
+        "kpi_id",
+        "method",
+        "Accuracy",
+        "F1",
+        "Precision",
+        "Recall",
+        "FPR",
+        "FNR",
+    ]
+    eval_df = pd.DataFrame(
+        [[kpi_id, method, ACC, F1, Precision, Recall, FPR, FNR]],
+        columns=columns,
+    )
+    return eval_df
+
+class NormalTimeSeriesDataset(Dataset):
+    def __init__(self, df, seq_len):
+        self.data = df['value'].values.reshape(-1, 1)  # Reshape to (num_samples, 1)
+        self.seq_len = seq_len
+        
+        # Normalize the data
+        self.scaler = StandardScaler()
+        self.normalized_data = self.scaler.fit_transform(self.data)
+
+    def __len__(self):
+        return len(self.data) - self.seq_len + 1
+
+    def __getitem__(self, index):
+        return torch.FloatTensor(self.normalized_data[index:index+self.seq_len])
+
+def data_loader(normal_data, seq_len, batch_size):
+    dataset = NormalTimeSeriesDataset(normal_data, seq_len)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=True)
