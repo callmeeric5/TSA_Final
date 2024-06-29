@@ -30,9 +30,9 @@ The features are:
 ### Data preprocessing
 * According to the visualization, we chose three KPI ID to represent each situation which are period, stable and unstable. 
 
-
 ### Data visulization
-* Staionarity
+* Staionarity (Test Statistic, p-value, Critical Values)
+To determine whether the dataset is stionary, we have to analysing the result of Dickey-Fuller test which are three tests together.
 * Seasonality
 * ACF&PACF
 
